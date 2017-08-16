@@ -934,7 +934,7 @@ Basic idea stolen from a script made by Daiz.
 
 """
 def DescaleAA(src, w=1280, h=720, thr=10, kernel='bilinear', b=1/3, c=1/3, taps=3,
-              expand=3, inflate=3, showmask=False,l=False):
+              expand=3, inflate=3, showmask=False):
 
     if kernel.lower().startswith('de'):
         kernel = kernel[2:]
@@ -954,7 +954,7 @@ def DescaleAA(src, w=1280, h=720, thr=10, kernel='bilinear', b=1/3, c=1/3, taps=
     sharp = core.resize.Point(sharp, format=src.format.id)
 
     # Restore true 1080p
-    deb_upscale = Resize(deb, ow, oh, a1=b, a2=c, taps=taps)
+    deb_upscale = Resize(deb, ow, oh, kernel=kernel, a1=b, a2=c, taps=taps)
     diffmask = core.std.Expr([src_y, deb_upscale], 'x y - abs')
     for _ in range(expand):
         diffmask = core.std.Maximum(diffmask, planes=0)
