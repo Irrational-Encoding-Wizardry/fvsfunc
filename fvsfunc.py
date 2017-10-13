@@ -778,7 +778,9 @@ def AutoDeblock(src, edgevalue=24, db1=1, db2=6, db3=15, deblocky=True, deblocku
         if deblocky: planes.append(0)
         if deblockuv: planes.extend([1,2])
 
-    orig = core.std.Prewitt(src, 0, edgevalue)
+    maxvalue = (1 << src.format.bits_per_sample) - 1
+    orig = core.std.Prewitt(src)
+    orig = core.std.Expr(orig, "x {edgevalue} >= {maxvalue} 0 ?".format(edgevalue=edgevalue, maxvalue=maxvalue))
     orig_d = orig.rgvs.RemoveGrain(4).rgvs.RemoveGrain(4)
 
     predeblock = haf.Deblock_QED(src.rgvs.RemoveGrain(2).rgvs.RemoveGrain(2))
@@ -950,7 +952,11 @@ def DescaleAA(src, w=1280, h=720, thr=10, kernel='bilinear', b=1/3, c=1/3, taps=
     src_y = core.std.ShufflePlanes(src, planes=0, colorfamily=vs.GRAY)
     deb = Resize(src_y, w, h, kernel=kernel, a1=b, a2=c, taps=taps, invks=True)
     sharp = nnedi3_rpow2.nnedi3_rpow2(deb, 2, ow, oh)
-    edgemask = core.std.Prewitt(sharp, 4 * maxvalue // 0xFF, 24 * maxvalue // 0xFF, planes=0)
+    thrlow = 4 * maxvalue // 0xFF
+    thrhigh = 24 * maxvalue // 0xFF
+    edgemask = core.std.Prewitt(sharp, planes=0)
+    edgemask = core.std.Expr(edgemask, "x {thrhigh} >= {maxvalue} x {thrlow} <= 0 x ? ?"
+                                       .format(thrhigh=thrhigh, maxvalue=maxvalue, thrlow=thrlow))
     sharp = core.resize.Point(sharp, format=src.format.id)
 
     # Restore true 1080p
@@ -1037,10 +1043,13 @@ def maa(src, mask=None, chroma=None, ss=None, aa=None, aac=None, show=None):
         chroma = False
 
     if mask != 0:
-        m = core.std.Sobel(mvf.GetPlane(src, 0), mthresh, mthresh)
+        m = core.std.Sobel(mvf.GetPlane(src, 0))
+        m = core.std.Binarize(m, mthresh)
         if chroma:
-            mu = core.std.Sobel(mvf.GetPlane(src, 1), mthreshc, mthreshc)
-            mv = core.std.Sobel(mvf.GetPlane(src, 2), mthreshc, mthreshc)
+            mu = core.std.Sobel(mvf.GetPlane(src, 1))
+            mu = core.std.Binarize(mu, mthreshc)
+            mv = core.std.Sobel(mvf.GetPlane(src, 2))
+            mv = core.std.Binarize(mv, mthreshc)
             m = core.std.ShufflePlanes([m,mu,mv], planes=[0,0,0], colorfamily=vs.YUV)
     if not chroma:
         c_aa = SangNomAA(mvf.GetPlane(src, 0), ss, aa)
