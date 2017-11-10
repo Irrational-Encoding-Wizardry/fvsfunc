@@ -485,9 +485,13 @@ def DescaleM(src, w, h, thr=None, expand=None, inflate=None, descale_kernel=None
     oh = src.height
 
     bits = src.format.bits_per_sample
-    maxvalue = (1 << bits) - 1
-
-    thr = thr * maxvalue // 0xFF
+    sample_type = src.format.sample_type
+    
+    if sample_type == vs.INTEGER:
+        maxvalue = (1 << bits) - 1
+        thr = thr * maxvalue // 0xFF
+    else:
+        thr /= 0xFF
 
     # Resizing
     src_y = core.std.ShufflePlanes(src, planes=0, colorfamily=vs.GRAY)
@@ -780,7 +784,7 @@ def AutoDeblock(src, edgevalue=24, db1=1, db2=6, db3=15, deblocky=True, deblocku
 
     maxvalue = (1 << src.format.bits_per_sample) - 1
     orig = core.std.Prewitt(src)
-    orig = core.std.Expr(orig, "x {edgevalue} >= {maxvalue} 0 ?".format(edgevalue=edgevalue, maxvalue=maxvalue))
+    orig = core.std.Expr(orig, "x {edgevalue} >= {maxvalue} x ?".format(edgevalue=edgevalue, maxvalue=maxvalue))
     orig_d = orig.rgvs.RemoveGrain(4).rgvs.RemoveGrain(4)
 
     predeblock = haf.Deblock_QED(src.rgvs.RemoveGrain(2).rgvs.RemoveGrain(2))
@@ -940,20 +944,25 @@ def DescaleAA(src, w=1280, h=720, thr=10, kernel='bilinear', b=1/3, c=1/3, taps=
 
     if kernel.lower().startswith('de'):
         kernel = kernel[2:]
-    bits = src.format.bits_per_sample
-    maxvalue = (1 << bits) - 1
 
     ow = src.width
     oh = src.height
 
-    thr = thr * maxvalue // 0xFF
+    bits = src.format.bits_per_sample
+    sample_type = src.format.sample_type
+    maxvalue = (1 << bits) - 1
+    
+    if sample_type == vs.INTEGER:
+        thr = thr * maxvalue // 0xFF
+    else:
+        thr /= 0xFF
 
     # Fix lineart
     src_y = core.std.ShufflePlanes(src, planes=0, colorfamily=vs.GRAY)
     deb = Resize(src_y, w, h, kernel=kernel, a1=b, a2=c, taps=taps, invks=True)
     sharp = nnedi3_rpow2.nnedi3_rpow2(deb, 2, ow, oh)
-    thrlow = 4 * maxvalue // 0xFF
-    thrhigh = 24 * maxvalue // 0xFF
+    thrlow = 4 * maxvalue // 0xFF if sample_type == vs.INTEGER else 4 / 0xFF
+    thrhigh = 24 * maxvalue // 0xFF if sample_type == vs.INTEGER else 24 / 0xFF
     edgemask = core.std.Prewitt(sharp, planes=0)
     edgemask = core.std.Expr(edgemask, "x {thrhigh} >= {maxvalue} x {thrlow} <= 0 x ? ?"
                                        .format(thrhigh=thrhigh, maxvalue=maxvalue, thrlow=thrlow))
@@ -1035,10 +1044,17 @@ def maa(src, mask=None, chroma=None, ss=None, aa=None, aac=None, show=None):
     if ss <= 0:
         raise ValueError('maa: "ss" must be > 0!')
 
+    bits = src.format.bits_per_sample
+    sample_type = src.format.sample_type
+    maxvalue = (1 << bits) - 1
+    
+    if sample_type == vs.INTEGER:
+        mthresh = -mask * maxvalue // 0xFF if mask < 0 else 7 * maxvalue // 0xFF
+        mthreshc = mthresh - 6 * maxvalue // 0xFF
+    else:
+        mthresh = -mask / 0xFF if mask < 0 else 7 / 0xFF
+        mthreshc = mthresh - 6 / 0xFF
 
-    maxvalue = (1 << src.format.bits_per_sample) - 1
-    mthresh = -mask * maxvalue // 0xFF if mask < 0 else 7 * maxvalue // 0xFF
-    mthreshc = mthresh - 6 * maxvalue // 0xFF
     if src.format.num_planes == 1:
         chroma = False
 
