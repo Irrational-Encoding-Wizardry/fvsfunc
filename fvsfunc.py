@@ -420,7 +420,7 @@ and masking pixels that have a difference greater than the specified threshold.
 """
 def DescaleM(src, w, h, thr=None, expand=None, inflate=None, descale_kernel=None, kernel=None, kernely=None, kerneluv=None,
              taps=None, tapsy=None, tapsuv=None, a1=None, a2=None, a1y=None, a2y=None, a1uv=None, a2uv=None, b=None, c=None,
-             chroma=None, yuv444=None, showmask=None):
+             chroma=None, yuv444=None, showmask=None, ow=None, oh=None):
 
     # Type checking
     kwargsdict = {'src': [src, (vs.VideoNode,)], 'w': [w, (int,)], 'h': [h, (int,)], 'thr': [thr, (int,)],
@@ -430,7 +430,7 @@ def DescaleM(src, w, h, thr=None, expand=None, inflate=None, descale_kernel=None
                   'a2': [a2, (int, float)], 'a1y': [a1y, (int, float)], 'a2y': [a2y, (int, float)],
                   'a1uv': [a1uv, (int, float)], 'a2uv': [a2uv, (int, float)], 'b': [b, (int, float)],
                   'c': [c, (int, float)], 'chroma': [chroma, (bool,)], 'yuv444': [yuv444, (bool,)],
-                  'showmask': [showmask, (int,)]}
+                  'showmask': [showmask, (int,)], 'ow': [ow, (int,)], 'oh': [oh, (int,)]}
 
     for k, v in kwargsdict.items():
         if v[0] is not None and not isinstance(v[0], v[1]):
@@ -472,6 +472,10 @@ def DescaleM(src, w, h, thr=None, expand=None, inflate=None, descale_kernel=None
         a1uv = a1
     if a2uv is None:
         a2uv = a2
+    if ow is None:
+        ow = w
+    if oh is None:
+        oh = h
 
     # Value checking
     if thr < 0 or thr > 0xFF:
@@ -481,8 +485,8 @@ def DescaleM(src, w, h, thr=None, expand=None, inflate=None, descale_kernel=None
     if yuv444 and not chroma:
         raise ValueError('DebilinearM: "yuv444=True" and "chroma=False" cannot be used at the same time!')
 
-    ow = src.width
-    oh = src.height
+    src_w = src.width
+    src_h = src.height
 
     bits = src.format.bits_per_sample
     sample_type = src.format.sample_type
@@ -500,19 +504,21 @@ def DescaleM(src, w, h, thr=None, expand=None, inflate=None, descale_kernel=None
         src_v = core.std.ShufflePlanes(src, planes=2, colorfamily=vs.GRAY)
 
     dbi = Resize(src_y, w, h, kernel=descale_kernel, a1=b, a2=c, taps=taps, invks=True)
-    dbi2 = Resize(dbi, ow, oh, kernel=descale_kernel, a1=b, a2=c, taps=taps)
+    dbi2 = Resize(dbi, src_w, src_h, kernel=descale_kernel, a1=b, a2=c, taps=taps)
+    if (w, h) != (ow, oh):
+        dbi = Resize(dbi, ow, oh, kernel=kernely, taps=tapsy, a1=a1y, a2=a2y)
 
     if chroma and yuv444:
-        rs = Resize(src_y, w, h, kernel=kernely, taps=tapsy, a1=a1y, a2=a2y)
-        rs_u = Resize(src_u, w, h, kernel=kerneluv, taps=tapsuv, a1=a1uv, a2=a2uv, sx=0.25)
-        rs_v = Resize(src_v, w, h, kernel=kerneluv, taps=tapsuv, a1=a1uv, a2=a2uv, sx=0.25)
+        rs = Resize(src_y, ow, oh, kernel=kernely, taps=tapsy, a1=a1y, a2=a2y)
+        rs_u = Resize(src_u, ow, oh, kernel=kerneluv, taps=tapsuv, a1=a1uv, a2=a2uv, sx=0.25)
+        rs_v = Resize(src_v, ow, oh, kernel=kerneluv, taps=tapsuv, a1=a1uv, a2=a2uv, sx=0.25)
     else:
-        rs = Resize(src if chroma else src_y, w, h, kernel=kernely, taps=tapsy, a1=a1y, a2=a2y)
+        rs = Resize(src if chroma else src_y, ow, oh, kernel=kernely, taps=tapsy, a1=a1y, a2=a2y)
 
     # Masking
     diffmask = core.std.Expr([src_y, dbi2], 'x y - abs')
     if showmask != 2:
-        diffmask = Resize(diffmask, w, h, kernel='bilinear')
+        diffmask = Resize(diffmask, ow, oh, kernel='bilinear')
         diffmask = core.std.Binarize(diffmask, threshold=thr)
     for _ in range(expand):
         diffmask = core.std.Maximum(diffmask, planes=0)
