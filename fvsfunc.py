@@ -491,7 +491,7 @@ def DescaleM(src, w, h, thr=None, expand=None, inflate=None, descale_kernel=None
         maxvalue = (1 << bits) - 1
         thr = thr * maxvalue // 0xFF
     else:
-        thr /= 0xFF
+        thr /= (235 - 16)
 
     # Resizing
     src_y = core.std.ShufflePlanes(src, planes=0, colorfamily=vs.GRAY)
@@ -958,7 +958,7 @@ def DescaleAA(src, w=1280, h=720, thr=10, kernel='bilinear', b=1/3, c=1/3, taps=
         thr = thr * maxvalue // 0xFF
     else:
         maxvalue = 1
-        thr /= 0xFF
+        thr /= (235 - 16)
 
     # Fix lineart
     src_y = core.std.ShufflePlanes(src, planes=0, colorfamily=vs.GRAY)
