@@ -969,6 +969,8 @@ def DescaleAA(src, w=1280, h=720, thr=10, kernel='bilinear', b=1/3, c=1/3, taps=
     edgemask = core.std.Prewitt(sharp, planes=0)
     edgemask = core.std.Expr(edgemask, "x {thrhigh} >= {maxvalue} x {thrlow} <= 0 x ? ?"
                                        .format(thrhigh=thrhigh, maxvalue=maxvalue, thrlow=thrlow))
+    if kernel == "bicubic" and c >= 0.7:
+        edgemask = core.std.Maximum(edgemask, planes=0)
     sharp = core.resize.Point(sharp, format=src.format.id)
 
     # Restore true 1080p
