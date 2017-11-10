@@ -721,7 +721,7 @@ def OverlayInter(src, pattern, pos=0, size=0, show=False, draft=False, bobber=No
 
     if show:
         maxvalue = (1 << src.format.bits_per_sample) - 1
-        offset = 32 * maxvalue // 0xFF if fixed.sample_type == vs.INTEGER else 32 / 0xFF
+        offset = 32 * maxvalue // 0xFF if fixed.format.sample_type == vs.INTEGER else 32 / 0xFF
         fixed = core.std.Expr(fixed, ['','x {} +'.format(offset),''])
 
     if pos == 1:
