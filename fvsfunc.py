@@ -721,7 +721,7 @@ def OverlayInter(src, pattern, pos=0, size=0, show=False, draft=False, bobber=No
 
     if show:
         maxvalue = (1 << src.format.bits_per_sample) - 1
-        offset = 32 * maxvalue // 0xFF
+        offset = 32 * maxvalue // 0xFF if fixed.sample_type == vs.INTEGER else 32 / 0xFF
         fixed = core.std.Expr(fixed, ['','x {} +'.format(offset),''])
 
     if pos == 1:
@@ -743,6 +743,8 @@ def OverlayInter(src, pattern, pos=0, size=0, show=False, draft=False, bobber=No
 VapourSynth port of AutoDeblock2. Original script by joletb, vinylfreak89, eXmendiC and Gebbi.
 
 The purpose of this script is to automatically remove MPEG2 artifacts.
+
+Only 8-bit input supported currently
 
 """
 def AutoDeblock(src, edgevalue=24, db1=1, db2=6, db3=15, deblocky=True, deblockuv=True, debug=False, redfix=False,
@@ -950,11 +952,12 @@ def DescaleAA(src, w=1280, h=720, thr=10, kernel='bilinear', b=1/3, c=1/3, taps=
 
     bits = src.format.bits_per_sample
     sample_type = src.format.sample_type
-    maxvalue = (1 << bits) - 1
     
     if sample_type == vs.INTEGER:
+        maxvalue = (1 << bits) - 1
         thr = thr * maxvalue // 0xFF
     else:
+        maxvalue = 1
         thr /= 0xFF
 
     # Fix lineart
