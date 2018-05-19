@@ -917,18 +917,21 @@ def InsertSign(clip, overlay, start, end=None, matrix='601'):
     middle = clip[start:end]
     after = clip[end:] if end != clip.num_frames else None
 
-    if overlay[1] is not None:
-        mask = core.resize.Bicubic(overlay[1], clip.width, clip.height)
-        mask = Depth(mask, bits=clip.format.bits_per_sample)
-    else:
-        mask = None
+    if overlay[1] is None:
+        if clip.format.sample_type = vs.INTEGER:
+            overlay[1] = overlay[0].std.Binarize(0)
+        else:
+            overlay[1] = overlay[0].std.Expr("1.0")
+    mask = core.resize.Bicubic(overlay[1], clip.width, clip.height)
+    mask = Depth(mask, bits=clip.format.bits_per_sample)
+
     if clip_cf != overlay_cf and (clip_cf == vs.YUV or overlay_cf == vs.YUV):
         sign = core.fmtc.matrix(overlay[0], mat=matrix)
     else:
         sign = overlay[0]
     sign = core.resize.Spline36(sign, clip.width, clip.height, format=clip.format.id,
                                 dither_type='error_diffusion')
-    middle = core.std.MaskedMerge(middle, sign, mask) if mask is not None else sign
+    middle = core.std.MaskedMerge(middle, sign, mask)
 
     out = middle
     if before is not None:
