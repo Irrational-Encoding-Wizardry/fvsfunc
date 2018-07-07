@@ -931,8 +931,7 @@ def InsertSign(clip, overlay, start, end=None, matrix='601'):
             overlay[1] = sign.std.Expr("1.0")
     mask = core.resize.Bicubic(overlay[1], clip.width, clip.height)
     mask = Depth(mask, bits=clip.format.bits_per_sample)
-    
-    sign = core.std.Trim(sign, length=middle.num_frames)
+
     middle = core.std.MaskedMerge(middle, sign, mask)
 
     out = middle
