@@ -150,13 +150,13 @@ def GradFun3(src, thr=None, radius=None, elast=None, mask=None, mode=None, ampo=
 
     def smooth_mod(src_16, ref_16, smode, radius, thr, elast, planes):
         if smode == 0:
-            return muf.GF3_smoothgrad_multistage(src_16, ref_16, radius, thr, elast, planes)
+            return muf._GF3_smoothgrad_multistage(src_16, ref_16, radius, thr, elast, planes)
         elif smode == 1:
-            return muf.GF3_dfttest(src_16, ref_16, radius, thr, elast, planes)
+            return muf._GF3_dfttest(src_16, ref_16, radius, thr, elast, planes)
         elif smode == 2:
             return bilateral(src_16, ref_16, radius, thr, elast, planes)
         elif smode == 3:
-            return muf.GF3_smoothgrad_multistage_3(src_16, radius, thr, elast, planes)
+            return muf._GF3_smoothgrad_multistage_3(src_16, radius, thr, elast, planes)
         elif smode == 4:
             return dfttest_mod(src_16, ref_16, radius, thr, elast, planes)
         elif smode == 5:
@@ -326,7 +326,7 @@ def GradFun3(src, thr=None, radius=None, elast=None, mask=None, mode=None, ampo=
 
     if mask > 0:
         dmask = mvf.GetPlane(src_8, 0)
-        dmask = muf.Build_gf3_range_mask(dmask, mask)
+        dmask = muf._Build_gf3_range_mask(dmask, mask)
         dmask = core.std.Expr([dmask], [mexpr])
         dmask = core.rgvs.RemoveGrain(dmask, [22])
         if mask > 1:
