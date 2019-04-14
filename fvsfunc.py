@@ -891,13 +891,16 @@ rfs = ReplaceFrames
 
 """
 This overlays a clip onto another.
-Default matrix for RGB -> YUV conversion is 601 to match AviSynth's Overlay()
+Default matrix for RGB -> YUV conversion is "709"
+Use "601" if you want to mimic AviSynth's Overlay()
 overlay should be a list of [video, mask] or a path string to an RGBA file
-If you specifiy a clip instead it will just be spliced into the source
-(RGBA videos opened by ffms2 are already such a list)
+If you specifiy a clip instead then a mask with max value will be generated
+(RGBA videos opened by ffms2 with alpha=True are already such a list)
 """
-def InsertSign(clip, overlay, start, end=None, matrix='601'):
+def InsertSign(clip, overlay, start, end=None, matrix='709'):
 
+    if start < 0:
+        raise ValueError('InsertSign: "start" must not be lower than 0!')
     if isinstance(overlay, str):
         overlay = core.ffms2.Source(overlay, alpha=True)
     if not isinstance(overlay, list):
@@ -910,6 +913,8 @@ def InsertSign(clip, overlay, start, end=None, matrix='601'):
         end = clip.num_frames
     if start >= end:
         raise ValueError('InsertSign: "start" must be smaller than or equal to "end"!')
+    if matrix == '601':
+        matrix = '470bg'
     clip_cf = clip.format.color_family
     overlay_cf = overlay[0].format.color_family
 
@@ -917,20 +922,20 @@ def InsertSign(clip, overlay, start, end=None, matrix='601'):
     middle = clip[start:end]
     after = clip[end:] if end != clip.num_frames else None
 
-    if clip_cf != overlay_cf and (clip_cf == vs.YUV or overlay_cf == vs.YUV):
-        sign = core.fmtc.matrix(overlay[0], mat=matrix)
-    else:
-        sign = overlay[0]
-    sign = core.resize.Spline36(sign, clip.width, clip.height, format=clip.format.id,
+    matrix_s = None
+    matrix_in_s = None
+    if clip_cf == vs.YUV and overlay_cf == vs.RGB:
+        matrix_s = matrix
+    if overlay_cf == vs.YUV and clip_cf == vs.RGB:
+        matrix_in_s = matrix
+    sign = core.resize.Spline36(overlay[0], clip.width, clip.height, format=clip.format.id,
+                                matrix_s=matrix_s, matrix_in_s=matrix_in_s,
                                 dither_type='error_diffusion')
 
     if overlay[1] is None:
-        if clip.format.sample_type == vs.INTEGER:
-            overlay[1] = sign.std.Binarize(0)
-        else:
-            overlay[1] = sign.std.Expr("1.0")
+        overlay[1] = core.std.BlankClip(sign, format=vs.GRAY8, color=255)
     mask = core.resize.Bicubic(overlay[1], clip.width, clip.height)
-    mask = Depth(mask, bits=clip.format.bits_per_sample)
+    mask = Depth(mask, bits=clip.format.bits_per_sample, range='full', range_in='full')
 
     middle = core.std.MaskedMerge(middle, sign, mask)
 
