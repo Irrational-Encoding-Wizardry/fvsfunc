@@ -4,7 +4,10 @@ from functools import partial
 import havsfunc as haf  # https://github.com/HomeOfVapourSynthEvolution/havsfunc
 import mvsfunc as mvf  # https://github.com/HomeOfVapourSynthEvolution/mvsfunc
 import muvsfunc as muf  # https://github.com/WolframRhodium/muvsfunc
-import nnedi3_rpow2  # https://gist.github.com/4re/342624c9e1a144a696c6
+try:
+    import nnedi3_rpow2 as nnp2  # https://gist.github.com/4re/342624c9e1a144a696c6
+except ImportError:
+    import edi_rpow2 as nnp2  # https://gist.github.com/YamashitaRen/020c497524e794779d9c
 
 # Small collection of VapourSynth functions I used at least once.
 # Most are simple wrappers or ports of AviSynth functions.
@@ -978,7 +981,7 @@ def DescaleAA(src, w=1280, h=720, thr=10, kernel='bilinear', b=1/3, c=1/3, taps=
     # Fix lineart
     src_y = core.std.ShufflePlanes(src, planes=0, colorfamily=vs.GRAY)
     deb = Resize(src_y, w, h, kernel=kernel, a1=b, a2=c, taps=taps, invks=True)
-    sharp = nnedi3_rpow2.nnedi3_rpow2(deb, 2, ow, oh)
+    sharp = nnp2.nnedi3_rpow2(deb, 2, ow, oh)
     thrlow = 4 * maxvalue // 0xFF if sample_type == vs.INTEGER else 4 / 0xFF
     thrhigh = 24 * maxvalue // 0xFF if sample_type == vs.INTEGER else 24 / 0xFF
     edgemask = core.std.Prewitt(sharp, planes=0)
