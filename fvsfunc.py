@@ -1,13 +1,6 @@
 import vapoursynth as vs
 import re
 from functools import partial
-import havsfunc as haf  # https://github.com/HomeOfVapourSynthEvolution/havsfunc
-import mvsfunc as mvf  # https://github.com/HomeOfVapourSynthEvolution/mvsfunc
-import muvsfunc as muf  # https://github.com/WolframRhodium/muvsfunc
-try:
-    import nnedi3_rpow2 as nnp2  # https://gist.github.com/4re/342624c9e1a144a696c6
-except ImportError:
-    import edi_rpow2 as nnp2  # https://gist.github.com/YamashitaRen/020c497524e794779d9c
 
 # Small collection of VapourSynth functions I used at least once.
 # Most are simple wrappers or ports of AviSynth functions.
@@ -25,6 +18,14 @@ except ImportError:
 #       TemporalDegrain
 #       DescaleAA
 #       InsertSign
+
+# To use all included functions, you need to have
+# the following Python scripts installed:
+#
+# havsfunc: https://github.com/HomeOfVapourSynthEvolution/havsfunc
+# mvsfunc: https://github.com/HomeOfVapourSynthEvolution/mvsfunc
+# muvsfunc: https://github.com/WolframRhodium/muvsfunc
+# nnedi3_rpow2: https://gist.github.com/4re/342624c9e1a144a696c6
 
 
 core = vs.core
@@ -150,6 +151,15 @@ def GradFun3(src, thr=None, radius=None, elast=None, mask=None, mode=None, ampo=
                 ampn=None, pat=None, dyn=None, staticnoise=None, smode=None, thr_det=None,
                 debug=None, thrc=None, radiusc=None, elastc=None, planes=None, ref=None,
                 yuv444=None, w=None, h=None, resizer=None, b=None, c=None, bits=None):
+
+    try:
+        import mvsfunc as mvf
+    except ImportError:
+        raise ImportError('GradFun3: mvsfunc not found. Download it here: https://github.com/HomeOfVapourSynthEvolution/mvsfunc')
+    try:
+        import muvsfunc as muf
+    except ImportError:
+        raise ImportError('GradFun3: muvsfunc not found. Download it here: https://github.com/WolframRhodium/muvsfunc')
 
     def smooth_mod(src_16, ref_16, smode, radius, thr, elast, planes):
         if smode == 0:
@@ -676,6 +686,11 @@ Original Header:
 """
 def OverlayInter(src, pattern, pos=0, size=0, show=False, draft=False, bobber=None, ivtc=None, tff=None):
 
+    try:
+        import havsfunc as haf
+    except ImportError:
+        raise ImportError('OverlayInter: havsfunc not found. Download it here: https://github.com/HomeOfVapourSynthEvolution/havsfunc')
+
     if bobber is None and not isinstance(tff, bool):
         raise TypeError('OverlayInter: "tff" must be set. Setting tff to True means top field first. False means bottom field first')
 
@@ -764,6 +779,11 @@ def AutoDeblock(src, edgevalue=24, db1=1, db2=6, db3=15, deblocky=True, deblocku
 
     def eval_deblock_strength(n, f, fastdeblock, unfiltered, fast, weakdeblock,
                               mediumdeblock, strongdeblock):
+
+        try:
+            import havsfunc as haf
+        except ImportError:
+            raise ImportError('AutoDeblock: havsfunc not found. Download it here: https://github.com/HomeOfVapourSynthEvolution/havsfunc')
         out = unfiltered
         if fastdeblock:
             if to8bit(f[0].props.OrigDiff) > adb1 and to8bit(f[1].props.YNextDiff) > adb1d:
@@ -962,6 +982,11 @@ Basic idea stolen from a script made by Daiz.
 def DescaleAA(src, w=1280, h=720, thr=10, kernel='bilinear', b=1/3, c=1/3, taps=3,
               expand=3, inflate=3, showmask=False):
 
+    try:
+        import nnedi3_rpow2 as nnp2
+    except ImportError:
+        raise ImportError('DescaleAA: nnedi3_rpow2 not found. Download it here: https://gist.github.com/4re/342624c9e1a144a696c6')
+
     if kernel.lower().startswith('de'):
         kernel = kernel[2:]
 
@@ -1120,6 +1145,11 @@ Differences:
 """
 def TemporalDegrain(input_, denoise=None, gpu=False, sigma=16, bw=16, bh=16, pel=2,
                     blksize=8, ov=None, degrain=2, limit=255, sad1=400, sad2=300, hq=0):
+
+    try:
+        import havsfunc as haf
+    except ImportError:
+        raise ImportError('TemporalDegrain: havsfunc not found. Download it here: https://github.com/HomeOfVapourSynthEvolution/havsfunc')
 
     if not isinstance(input_, vs.VideoNode):
         raise TypeError('TemporalDegrain: "input_" must be a clip!')
