@@ -774,16 +774,16 @@ Only 8-bit input supported currently
 def AutoDeblock(src, edgevalue=24, db1=1, db2=6, db3=15, deblocky=True, deblockuv=True, debug=False, redfix=False,
                 fastdeblock=False, adb1=3, adb2=4, adb3=8, adb1d=2, adb2d=7, adb3d=11, planes=None):
 
+    try:
+        import havsfunc as haf
+    except ImportError:
+        raise ImportError('AutoDeblock: havsfunc not found. Download it here: https://github.com/HomeOfVapourSynthEvolution/havsfunc')
+
     def to8bit(f):
         return f * 0xFF
 
     def eval_deblock_strength(n, f, fastdeblock, unfiltered, fast, weakdeblock,
                               mediumdeblock, strongdeblock):
-
-        try:
-            import havsfunc as haf
-        except ImportError:
-            raise ImportError('AutoDeblock: havsfunc not found. Download it here: https://github.com/HomeOfVapourSynthEvolution/havsfunc')
         out = unfiltered
         if fastdeblock:
             if to8bit(f[0].props.OrigDiff) > adb1 and to8bit(f[1].props.YNextDiff) > adb1d:
