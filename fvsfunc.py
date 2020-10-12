@@ -1054,6 +1054,11 @@ Works on any bitdepth
 """
 def maa(src, mask=None, chroma=None, ss=None, aa=None, aac=None, show=None):
 
+    try:
+        import mvsfunc as mvf
+    except ImportError:
+        raise ImportError('maa: mvsfunc not found. Download it here: https://github.com/HomeOfVapourSynthEvolution/mvsfunc')
+
     def SangNomAA(src, ss=2.0, aa=48, aac=None):
         ss_w = round(src.width * ss / 4) * 4
         ss_h = round(src.height * ss / 4) * 4
