@@ -782,20 +782,26 @@ def AutoDeblock(src, edgevalue=24, db1=1, db2=6, db3=15, deblocky=True, deblocku
     def to8bit(f):
         return f * 0xFF
 
-    def eval_deblock_strength(n, f, fastdeblock, unfiltered, fast, weakdeblock,
+    def sub_props(src, f, name):
+        OrigDiff_str = str(to8bit(f[0].props.OrigDiff))
+        YNextDiff_str = str(to8bit(f[1].props.YNextDiff))
+        return core.sub.Subtitle(src, name + f"\nOrigDiff: {OrigDiff_str}\nYNextDiff: {YNextDiff_str}")
+
+    def eval_deblock_strength(n, f, fastdeblock, debug, unfiltered, fast, weakdeblock,
                               mediumdeblock, strongdeblock):
+        unfiltered = sub_props(unfiltered, f, "unfiltered") if debug else unfiltered
         out = unfiltered
         if fastdeblock:
             if to8bit(f[0].props.OrigDiff) > adb1 and to8bit(f[1].props.YNextDiff) > adb1d:
-                return fast
+                return sub_props(fast, f, "deblock") if debug else fast
             else:
                 return unfiltered
         if to8bit(f[0].props.OrigDiff) > adb1 and to8bit(f[1].props.YNextDiff) > adb1d:
-            out = weakdeblock
+            out = sub_props(weakdeblock, f, "weakdeblock") if debug else weakdeblock
         if to8bit(f[0].props.OrigDiff) > adb2 and to8bit(f[1].props.YNextDiff) > adb2d:
-            out = mediumdeblock
+            out = sub_props(mediumdeblock, f, "mediumdeblock") if debug else mediumdeblock
         if to8bit(f[0].props.OrigDiff) > adb3 and to8bit(f[1].props.YNextDiff) > adb3d:
-            out = strongdeblock
+            out = sub_props(strongdeblock, f, "strongdeblock") if debug else strongdeblock
         return out
 
     def fix_red(n, f, unfiltered, autodeblock):
@@ -820,21 +826,16 @@ def AutoDeblock(src, edgevalue=24, db1=1, db2=6, db3=15, deblocky=True, deblocku
 
     predeblock = haf.Deblock_QED(src.rgvs.RemoveGrain(2).rgvs.RemoveGrain(2))
     fast = core.dfttest.DFTTest(predeblock, tbsize=1)
-    fast = core.text.Text(fast, 'deblock') if debug else fast
 
     unfiltered = src
-    unfiltered = core.text.Text(unfiltered, 'unfiltered') if debug else unfiltered
     weakdeblock = core.dfttest.DFTTest(predeblock, sigma=db1, tbsize=1, planes=planes)
-    weakdeblock = core.text.Text(weakdeblock, 'weakdeblock') if debug else weakdeblock
     mediumdeblock = core.dfttest.DFTTest(predeblock, sigma=db2, tbsize=1, planes=planes)
-    mediumdeblock = core.text.Text(mediumdeblock, 'mediumdeblock') if debug else mediumdeblock
     strongdeblock = core.dfttest.DFTTest(predeblock, sigma=db3, tbsize=1, planes=planes)
-    strongdeblock = core.text.Text(strongdeblock, 'strongdeblock') if debug else strongdeblock
 
     difforig = core.std.PlaneStats(orig, orig_d, prop='Orig')
     diffnext = core.std.PlaneStats(src, src.std.DeleteFrames([0]), prop='YNext')
     autodeblock = core.std.FrameEval(unfiltered, partial(eval_deblock_strength, fastdeblock=fastdeblock,
-                                     unfiltered=unfiltered, fast=fast, weakdeblock=weakdeblock,
+                                     debug=debug, unfiltered=unfiltered, fast=fast, weakdeblock=weakdeblock,
                                      mediumdeblock=mediumdeblock, strongdeblock=strongdeblock),
                                      prop_src=[difforig,diffnext])
 
