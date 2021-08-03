@@ -269,10 +269,10 @@ def GradFun3(src, thr=None, radius=None, elast=None, mask=None, mode=None, ampo=
         bits = src.format.bits_per_sample
 
     # Value checking
-    if src.format.color_family not in [vs.YUV, vs.GRAY, vs.YCOCG]:
-        raise TypeError(funcname + ': "src" must be YUV, GRAY or YCOCG color family!')
-    if ref.format.color_family not in [vs.YUV, vs.GRAY, vs.YCOCG]:
-        raise TypeError(funcname + ': "ref" must be YUV, GRAY or YCOCG color family!')
+    if src.format.color_family not in [vs.YUV, vs.GRAY]:
+        raise TypeError(funcname + ': "src" must be YUV or GRAY color family!')
+    if ref.format.color_family not in [vs.YUV, vs.GRAY]:
+        raise TypeError(funcname + ': "ref" must be YUV or GRAY color family!')
     if thr < 0.1 or thr > 10.0:
         raise ValueError(funcname + ': "thr" must be in [0.1, 10.0]!')
     if thrc < 0.1 or thrc > 10.0:
