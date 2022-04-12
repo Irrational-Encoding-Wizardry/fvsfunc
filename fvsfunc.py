@@ -1284,7 +1284,7 @@ def Resize(src, w, h, sx=None, sy=None, sw=None, sh=None, kernel='spline36', tap
 
     if invks and kernel == 'bilinear' and hasattr(core, 'unresize') and invkstaps is None:
         return core.unresize.Unresize(src, w, h, src_left=sx, src_top=sy)
-    if invks and kernel in ['bilinear', 'bicubic', 'lanczos', 'spline16', 'spline36'] and hasattr(core, 'descale') and invkstaps is None:
+    if invks and kernel in ['bilinear', 'bicubic', 'lanczos', 'spline16', 'spline36', 'spline64'] and hasattr(core, 'descale') and invkstaps is None:
         return Descale(src, w, h, kernel=kernel, b=a1, c=a2, taps=taps)
     if not invks:
         if kernel == 'bilinear':
@@ -1299,6 +1299,9 @@ def Resize(src, w, h, sx=None, sy=None, sw=None, sh=None, kernel='spline36', tap
         if kernel == 'spline36':
             return core.resize.Spline36(src, w, h, range=fulld, range_in=fulls, src_left=sx, src_top=sy,
                                         src_width=sw, src_height=sh)
+        if kernel == 'spline64':
+            return core.resize.Spline64(src, w, h, range=fulld, range_in=fulls, src_left=sx, src_top=sy,
+                                        src_width=sw, src_height=sh)
         if kernel == 'lanczos':
             return core.resize.Lanczos(src, w, h, range=fulld, range_in=fulls, filter_param_a=taps,
                                        src_left=sx, src_top=sy, src_width=sw, src_height=sh)
@@ -1307,22 +1310,25 @@ def Resize(src, w, h, sx=None, sy=None, sw=None, sh=None, kernel='spline36', tap
 
 
 def Debilinear(src, width, height, yuv444=False, gray=False, chromaloc=None):
-    return Descale(src, width, height, kernel='bilinear', b=None, c=None, taps=None, yuv444=yuv444, gray=gray, chromaloc=chromaloc)
+    return Descale(src, width, height, kernel='bilinear', taps=None, b=None, c=None, yuv444=yuv444, gray=gray, chromaloc=chromaloc)
 
-def Debicubic(src, width, height, b=1/3, c=1/3, yuv444=False, gray=False, chromaloc=None):
-    return Descale(src, width, height, kernel='bicubic', b=b, c=c, taps=None, yuv444=yuv444, gray=gray, chromaloc=chromaloc)
+def Debicubic(src, width, height, b=0.0, c=0.5, yuv444=False, gray=False, chromaloc=None):
+    return Descale(src, width, height, kernel='bicubic', taps=None, b=b, c=c, yuv444=yuv444, gray=gray, chromaloc=chromaloc)
 
 def Delanczos(src, width, height, taps=3, yuv444=False, gray=False, chromaloc=None):
-    return Descale(src, width, height, kernel='lanczos', b=None, c=None, taps=taps, yuv444=yuv444, gray=gray, chromaloc=chromaloc)
+    return Descale(src, width, height, kernel='lanczos', taps=taps, b=None, c=None, yuv444=yuv444, gray=gray, chromaloc=chromaloc)
 
 def Despline16(src, width, height, yuv444=False, gray=False, chromaloc=None):
-    return Descale(src, width, height, kernel='spline16', b=None, c=None, taps=None, yuv444=yuv444, gray=gray, chromaloc=chromaloc)
+    return Descale(src, width, height, kernel='spline16', taps=None, b=None, c=None, yuv444=yuv444, gray=gray, chromaloc=chromaloc)
 
 def Despline36(src, width, height, yuv444=False, gray=False, chromaloc=None):
-    return Descale(src, width, height, kernel='spline36', b=None, c=None, taps=None, yuv444=yuv444, gray=gray, chromaloc=chromaloc)
+    return Descale(src, width, height, kernel='spline36', taps=None, b=None, c=None, yuv444=yuv444, gray=gray, chromaloc=chromaloc)
+
+def Despline64(src, width, height, yuv444=False, gray=False, chromaloc=None):
+    return Descale(src, width, height, kernel='spline64', taps=None, b=None, c=None, yuv444=yuv444, gray=gray, chromaloc=chromaloc)
 
 
-def Descale(src, width, height, kernel='bilinear', b=1/3, c=1/3, taps=3, yuv444=False, gray=False, chromaloc=None):
+def Descale(src, width, height, kernel=None, custom_kernel=None, taps=None, b=None, c=None, yuv444=False, gray=False, chromaloc=None):
     src_f = src.format
     src_cf = src_f.color_family
     src_st = src_f.sample_type
@@ -1330,26 +1336,24 @@ def Descale(src, width, height, kernel='bilinear', b=1/3, c=1/3, taps=3, yuv444=
     src_sw = src_f.subsampling_w
     src_sh = src_f.subsampling_h
 
-    descale_filter = get_descale_filter(b, c, taps, kernel)
-
-    if src_cf == vs.RGB and not gray:
-        rgb = descale_filter(to_rgbs(src), width, height)
+    if src_cf == RGB and not gray:
+        rgb = to_rgbs(src).descale.Descale(width, height, kernel, custom_kernel, taps, b, c)
         return rgb.resize.Point(format=src_f.id)
 
-    y = descale_filter(to_grays(src), width, height)
-    y_f = core.query_video_format(vs.GRAY, src_st, src_bits, 0, 0)
+    y = to_grays(src).descale.Descale(width, height, kernel, custom_kernel, taps, b, c)
+    y_f = core.register_format(GRAY, src_st, src_bits, 0, 0)
     y = y.resize.Point(format=y_f.id)
 
-    if src_cf == vs.GRAY or gray:
+    if src_cf == GRAY or gray:
         return y
 
     if not yuv444 and ((width % 2 and src_sw) or (height % 2 and src_sh)):
         raise ValueError('Descale: The output dimension and the subsampling are incompatible.')
 
-    uv_f = core.query_video_format(src_cf, src_st, src_bits, 0 if yuv444 else src_sw, 0 if yuv444 else src_sh)
+    uv_f = core.register_format(src_cf, src_st, src_bits, 0 if yuv444 else src_sw, 0 if yuv444 else src_sh)
     uv = src.resize.Spline36(width, height, format=uv_f.id, chromaloc_s=chromaloc)
 
-    return core.std.ShufflePlanes([y,uv], [0,1,2], vs.YUV)
+    return core.std.ShufflePlanes([y,uv], [0,1,2], YUV)
 
 
 def to_grays(src):
@@ -1362,22 +1366,6 @@ def to_rgbs(src):
 
 def get_plane(src, plane):
     return core.std.ShufflePlanes(src, plane, vs.GRAY)
-
-
-def get_descale_filter(b, c, taps, kernel):
-    kernel = kernel.lower()
-    if kernel == 'bilinear':
-        return core.descale.Debilinear
-    elif kernel == 'bicubic':
-        return partial(core.descale.Debicubic, b=b, c=c)
-    elif kernel == 'lanczos':
-        return partial(core.descale.Delanczos, taps=taps)
-    elif kernel == 'spline16':
-        return core.descale.Despline16
-    elif kernel == 'spline36':
-        return core.descale.Despline36
-    else:
-        raise ValueError('Descale: Invalid kernel specified.')
 
 
 def Depth(src, bits, dither_type='error_diffusion', range=None, range_in=None):
