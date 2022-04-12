@@ -1337,7 +1337,7 @@ def Descale(src, width, height, kernel='bilinear', b=1/3, c=1/3, taps=3, yuv444=
         return rgb.resize.Point(format=src_f.id)
 
     y = descale_filter(to_grays(src), width, height)
-    y_f = core.register_format(vs.GRAY, src_st, src_bits, 0, 0)
+    y_f = core.query_video_format(vs.GRAY, src_st, src_bits, 0, 0)
     y = y.resize.Point(format=y_f.id)
 
     if src_cf == vs.GRAY or gray:
@@ -1346,7 +1346,7 @@ def Descale(src, width, height, kernel='bilinear', b=1/3, c=1/3, taps=3, yuv444=
     if not yuv444 and ((width % 2 and src_sw) or (height % 2 and src_sh)):
         raise ValueError('Descale: The output dimension and the subsampling are incompatible.')
 
-    uv_f = core.register_format(src_cf, src_st, src_bits, 0 if yuv444 else src_sw, 0 if yuv444 else src_sh)
+    uv_f = core.query_video_format(src_cf, src_st, src_bits, 0 if yuv444 else src_sw, 0 if yuv444 else src_sh)
     uv = src.resize.Spline36(width, height, format=uv_f.id, chromaloc_s=chromaloc)
 
     return core.std.ShufflePlanes([y,uv], [0,1,2], vs.YUV)
@@ -1397,7 +1397,7 @@ def Depth(src, bits, dither_type='error_diffusion', range=None, range_in=None):
 
     if (src_bits, range_in) == (bits, range):
         return src
-    out_f = core.register_format(src_cf, dst_st, bits, src_sw, src_sh)
+    out_f = core.query_video_format(src_cf, dst_st, bits, src_sw, src_sh)
     return core.resize.Point(src, format=out_f.id, dither_type=dither_type, range=range, range_in=range_in)
 
 
