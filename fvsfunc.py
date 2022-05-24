@@ -926,6 +926,7 @@ def InsertSign(clip, overlay, start, end=None, matrix='709'):
         raise ValueError('InsertSign: "start" must not be lower than 0!')
     if isinstance(overlay, str):
         overlay = core.ffms2.Source(overlay, alpha=True)
+        overlay = [overlay, overlay.std.PropToClip('_Alpha')]
     if not isinstance(overlay, list):
         overlay = [overlay, None]
     if end is None:
