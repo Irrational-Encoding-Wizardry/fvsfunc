@@ -767,7 +767,7 @@ VapourSynth port of AutoDeblock2. Original script by joletb, vinylfreak89, eXmen
 
 The purpose of this script is to automatically remove MPEG2 artifacts.
 
-Only 8-bit input supported currently
+Supports 8..16 bit integer YUV formats
 
 """
 def AutoDeblock(src, edgevalue=24, db1=1, db2=6, db3=15, deblocky=True, deblockuv=True, debug=False, redfix=False,
@@ -778,10 +778,26 @@ def AutoDeblock(src, edgevalue=24, db1=1, db2=6, db3=15, deblocky=True, deblocku
     except ImportError:
         raise ImportError('AutoDeblock: havsfunc not found. Download it here: https://github.com/HomeOfVapourSynthEvolution/havsfunc')
 
+    if src.format.color_family not in [vs.YUV]:
+        raise TypeError("AutoDeblock: src must be YUV color family!")
+
+    if src.format.bits_per_sample < 8 or src.format.bits_per_sample > 16 or src.format.sample_type != vs.INTEGER:
+        raise TypeError("AutoDeblock: src must be between 8 and 16 bit integer format")
+
+    # Scale values to handle high bit depths
+    shift = src.format.bits_per_sample - 8
+    edgevalue = edgevalue << shift
+    maxvalue = (1 << src.format.bits_per_sample) - 1
+
+    # Scales the output of PlaneStats (which is a float, 0-1) to 8 bit values.
+    # We scale to 8 bit because all thresholds/parameters for this function are
+    # specified in an 8-bit scale.
+    # All processing still happens in the native bit depth of the input format.
     def to8bit(f):
-        return f * 0xFF
+        return f * 255
 
     def sub_props(src, f, name):
+
         OrigDiff_str = str(to8bit(f[0].props.OrigDiff))
         YNextDiff_str = str(to8bit(f[1].props.YNextDiff))
         return core.sub.Subtitle(src, name + f"\nOrigDiff: {OrigDiff_str}\nYNextDiff: {YNextDiff_str}")
@@ -806,7 +822,7 @@ def AutoDeblock(src, edgevalue=24, db1=1, db2=6, db3=15, deblocky=True, deblocku
     def fix_red(n, f, unfiltered, autodeblock):
         if (to8bit(f[0].props.YAverage) > 50 and to8bit(f[0].props.YAverage) < 130
                 and to8bit(f[1].props.UAverage) > 95 and to8bit(f[1].props.UAverage) < 130
-                and to8bit(f[2].props.VAverage) > 130 and to8bit(f[2].props.YAverage) < 155):
+                and to8bit(f[2].props.VAverage) > 130 and to8bit(f[2].props.VAverage) < 155):
             return unfiltered
         return autodeblock
 
@@ -818,9 +834,8 @@ def AutoDeblock(src, edgevalue=24, db1=1, db2=6, db3=15, deblocky=True, deblocku
         if deblocky: planes.append(0)
         if deblockuv: planes.extend([1,2])
 
-    maxvalue = (1 << src.format.bits_per_sample) - 1
     orig = core.std.Prewitt(src)
-    orig = core.std.Expr(orig, "x {edgevalue} >= {maxvalue} x ?".format(edgevalue=edgevalue, maxvalue=maxvalue))
+    orig = core.std.Expr(orig, f"x {edgevalue} >= {maxvalue} x ?")
     orig_d = orig.rgvs.RemoveGrain(4).rgvs.RemoveGrain(4)
 
     predeblock = haf.Deblock_QED(src.rgvs.RemoveGrain(2).rgvs.RemoveGrain(2))
