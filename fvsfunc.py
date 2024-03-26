@@ -895,8 +895,8 @@ def ReplaceFrames(clipa, clipb, mappings=None, filename=None):
     # Some people used this as separators and wondered why it wasn't working
     mappings = mappings.replace(',', ' ').replace(':', ' ')
 
-    frames = re.findall('\d+(?!\d*\s*\d*\s*\d*\])', mappings)
-    ranges = re.findall('\[\s*\d+\s+\d+\s*\]', mappings)
+    frames = re.findall(r'\d+(?!\d*\s*\d*\s*\d*\])', mappings)
+    ranges = re.findall(r'\[\s*\d+\s+\d+\s*\]', mappings)
     maps = []
     for range_ in ranges:
         maps.append([int(x) for x in range_.strip('[ ]').split()])
